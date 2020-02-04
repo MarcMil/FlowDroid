@@ -53,7 +53,18 @@ public class MemoryWarningSystem {
 
 	}
 
-	private static final MemoryPoolMXBean tenuredGenPool = findTenuredGenPool();
+	private static final MemoryPoolMXBean tenuredGenPool;
+
+	private static final double PERCENTAGE_WARN = 0.7;
+	static {
+		tenuredGenPool = findTenuredGenPool();
+
+		long maxMemory = tenuredGenPool.getUsage().getMax();
+		long warningThreshold = (long) (maxMemory * PERCENTAGE_WARN);
+		tenuredGenPool.setUsageThreshold(warningThreshold);
+		logger.info("Configure memory warning at " + (warningThreshold / 1000 / 1000) + " MB ("
+				+ (maxMemory / 1000 / 1000) + " MB max)");
+	}
 
 	private final Set<OnMemoryThresholdReached> listeners = new HashSet<>();
 	private final NotificationListener memoryListener;
@@ -75,7 +86,7 @@ public class MemoryWarningSystem {
 					long usedMem = runtime.totalMemory() - runtime.freeMemory();
 
 					logger.info("Triggering memory warning at " + (usedMem / 1000 / 1000) + " MB ("
-							+ (usedMem / 1000 / 1000) + " MB in tenured gen)...");
+							+ (usedMemory / 1000 / 1000) + " MB in tenured gen)...");
 					for (OnMemoryThresholdReached listener : listeners)
 						listener.onThresholdReached(usedMemory, maxMemory);
 				}

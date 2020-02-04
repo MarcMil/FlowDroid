@@ -260,111 +260,120 @@ public class InfoflowCFG implements IInfoflowCFG {
 		return use == StaticFieldUse.Write || use == StaticFieldUse.ReadWrite || use == StaticFieldUse.Unknown;
 	}
 
-	protected synchronized StaticFieldUse checkStaticFieldUsed(SootMethod smethod, SootField variable) {
+	protected StaticFieldUse checkStaticFieldUsed(SootMethod smethod, SootField variable) {
 		// Skip over phantom methods
 		if (!smethod.isConcrete())
 			return StaticFieldUse.Unused;
 
-		List<SootMethod> workList = new ArrayList<>();
-		workList.add(smethod);
-		Map<SootMethod, StaticFieldUse> tempUses = new HashMap<>();
+		Map<SootField, StaticFieldUse> c = staticFieldUses.get(smethod);
+		if (c != null) {
+			StaticFieldUse a = c.get(variable);
+			if (a != null)
+				return a;
+		}
+		synchronized (staticFieldUses) {
+			List<SootMethod> workList = new ArrayList<>();
+			workList.add(smethod);
+			Map<SootMethod, StaticFieldUse> tempUses = new HashMap<>();
 
-		int processedMethods = 0;
-		while (!workList.isEmpty()) {
-			// DFS: We need to be able post-process a method once we know what all the
-			// invocations do
-			SootMethod method = workList.remove(workList.size() - 1);
-			processedMethods++;
+			int processedMethods = 0;
+			while (!workList.isEmpty()) {
+				// DFS: We need to be able post-process a method once we know what all the
+				// invocations do
+				SootMethod method = workList.remove(workList.size() - 1);
+				processedMethods++;
 
-			// Without a body, we cannot say much
-			if (!method.hasActiveBody())
-				continue;
-
-			// Limit the maximum analysis depth
-			if (processedMethods > MAX_STATIC_USE_ANALYSIS_DEPTH)
-				return StaticFieldUse.Unknown;
-
-			boolean hasInvocation = false;
-			boolean reads = false, writes = false;
-
-			// Do we already have a cache entry?
-			Map<SootField, StaticFieldUse> entry = staticFieldUses.get(method);
-			if (entry != null) {
-				StaticFieldUse b = entry.get(variable);
-				if (b != null && b != StaticFieldUse.Unknown) {
-					tempUses.put(method, b);
+				// Without a body, we cannot say much
+				if (!method.hasActiveBody())
 					continue;
-				}
-			}
 
-			// Do we already have an entry?
-			StaticFieldUse oldUse = tempUses.get(method);
+				// Limit the maximum analysis depth
+				if (processedMethods > MAX_STATIC_USE_ANALYSIS_DEPTH)
+					return StaticFieldUse.Unknown;
 
-			// Scan for references to this variable
-			for (Unit u : method.getActiveBody().getUnits()) {
-				if (u instanceof AssignStmt) {
-					AssignStmt assign = (AssignStmt) u;
+				boolean hasInvocation = false;
+				boolean reads = false, writes = false;
 
-					if (assign.getLeftOp() instanceof StaticFieldRef) {
-						SootField sf = ((StaticFieldRef) assign.getLeftOp()).getField();
-						registerStaticVariableUse(method, sf, StaticFieldUse.Write);
-						if (variable.equals(sf))
-							writes = true;
-					}
-
-					if (assign.getRightOp() instanceof StaticFieldRef) {
-						SootField sf = ((StaticFieldRef) assign.getRightOp()).getField();
-						registerStaticVariableUse(method, sf, StaticFieldUse.Read);
-						if (variable.equals(sf))
-							reads = true;
+				// Do we already have a cache entry?
+				Map<SootField, StaticFieldUse> entry = staticFieldUses.get(method);
+				if (entry != null) {
+					StaticFieldUse b = entry.get(variable);
+					if (b != null && b != StaticFieldUse.Unknown) {
+						tempUses.put(method, b);
+						continue;
 					}
 				}
 
-				if (((Stmt) u).containsInvokeExpr())
-					for (Iterator<Edge> edgeIt = Scene.v().getCallGraph().edgesOutOf(u); edgeIt.hasNext();) {
-						Edge e = edgeIt.next();
-						SootMethod callee = e.getTgt().method();
-						if (callee.isConcrete()) {
-							// Do we already know this method?
-							StaticFieldUse calleeUse = tempUses.get(callee);
-							if (calleeUse == null) {
-								// We need to get back to the current method after we have processed the callees
-								if (!hasInvocation)
-									workList.add(method);
+				// Do we already have an entry?
+				StaticFieldUse oldUse = tempUses.get(method);
 
-								// Process the callee
-								workList.add(callee);
-								hasInvocation = true;
-							} else {
-								reads |= calleeUse == StaticFieldUse.Read || calleeUse == StaticFieldUse.ReadWrite;
-								writes |= calleeUse == StaticFieldUse.Write || calleeUse == StaticFieldUse.ReadWrite;
-							}
+				// Scan for references to this variable
+				for (Unit u : method.getActiveBody().getUnits()) {
+					if (u instanceof AssignStmt) {
+						AssignStmt assign = (AssignStmt) u;
+
+						if (assign.getLeftOp() instanceof StaticFieldRef) {
+							SootField sf = ((StaticFieldRef) assign.getLeftOp()).getField();
+							registerStaticVariableUse(method, sf, StaticFieldUse.Write);
+							if (variable.equals(sf))
+								writes = true;
+						}
+
+						if (assign.getRightOp() instanceof StaticFieldRef) {
+							SootField sf = ((StaticFieldRef) assign.getRightOp()).getField();
+							registerStaticVariableUse(method, sf, StaticFieldUse.Read);
+							if (variable.equals(sf))
+								reads = true;
 						}
 					}
+
+					if (((Stmt) u).containsInvokeExpr())
+						for (Iterator<Edge> edgeIt = Scene.v().getCallGraph().edgesOutOf(u); edgeIt.hasNext();) {
+							Edge e = edgeIt.next();
+							SootMethod callee = e.getTgt().method();
+							if (callee.isConcrete()) {
+								// Do we already know this method?
+								StaticFieldUse calleeUse = tempUses.get(callee);
+								if (calleeUse == null) {
+									// We need to get back to the current method after we have processed the callees
+									if (!hasInvocation)
+										workList.add(method);
+
+									// Process the callee
+									workList.add(callee);
+									hasInvocation = true;
+								} else {
+									reads |= calleeUse == StaticFieldUse.Read || calleeUse == StaticFieldUse.ReadWrite;
+									writes |= calleeUse == StaticFieldUse.Write
+											|| calleeUse == StaticFieldUse.ReadWrite;
+								}
+							}
+						}
+				}
+
+				// Variable is not read
+				StaticFieldUse fieldUse = StaticFieldUse.Unused;
+				if (reads && writes)
+					fieldUse = StaticFieldUse.ReadWrite;
+				else if (reads)
+					fieldUse = StaticFieldUse.Read;
+				else if (writes)
+					fieldUse = StaticFieldUse.Write;
+
+				// Have we changed our previous state?
+				if (fieldUse == oldUse)
+					continue;
+				tempUses.put(method, fieldUse);
 			}
 
-			// Variable is not read
-			StaticFieldUse fieldUse = StaticFieldUse.Unused;
-			if (reads && writes)
-				fieldUse = StaticFieldUse.ReadWrite;
-			else if (reads)
-				fieldUse = StaticFieldUse.Read;
-			else if (writes)
-				fieldUse = StaticFieldUse.Write;
+			// Merge the temporary results into the global cache
+			for (Entry<SootMethod, StaticFieldUse> tempEntry : tempUses.entrySet()) {
+				registerStaticVariableUse(tempEntry.getKey(), variable, tempEntry.getValue());
+			}
 
-			// Have we changed our previous state?
-			if (fieldUse == oldUse)
-				continue;
-			tempUses.put(method, fieldUse);
+			StaticFieldUse outerUse = tempUses.get(smethod);
+			return outerUse == null ? StaticFieldUse.Unknown : outerUse;
 		}
-
-		// Merge the temporary results into the global cache
-		for (Entry<SootMethod, StaticFieldUse> tempEntry : tempUses.entrySet()) {
-			registerStaticVariableUse(tempEntry.getKey(), variable, tempEntry.getValue());
-		}
-
-		StaticFieldUse outerUse = tempUses.get(smethod);
-		return outerUse == null ? StaticFieldUse.Unknown : outerUse;
 	}
 
 	protected void registerStaticVariableUse(SootMethod method, SootField variable, StaticFieldUse fieldUse) {

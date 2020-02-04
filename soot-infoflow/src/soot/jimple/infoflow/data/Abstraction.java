@@ -10,6 +10,8 @@
  ******************************************************************************/
 package soot.jimple.infoflow.data;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -77,6 +79,12 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	protected AtomicBitSet pathFlags = null;
 	protected int propagationPathLength = 0;
 
+	private boolean isFinal;
+
+	public Stmt hashStatement;
+
+	public String prevStackTrace;
+
 	public static class NeighborHashingStrategy implements HashingStrategy<Abstraction> {
 
 		private static final long serialVersionUID = 4836518478381414909L;
@@ -84,16 +92,23 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 
 		@Override
 		public int computeHashCode(Abstraction abs) {
-			if (abs.neighborHashCode != 0)
-				return abs.neighborHashCode;
-
+			int prev = abs.neighborHashCode;
 			final int prime = 31;
 			int result = 1;
 
 			result = prime * result + abs.hashCode();
 			result = prime * result + ((abs.predecessor == null) ? 0 : abs.predecessor.hashCode());
 
+			if (prev != 0 && prev != result) {
+				throw new RuntimeException("Oops");
+			}
+			if (prev != 0 && abs.currentStmt != abs.hashStatement)
+				throw new RuntimeException("Oops");
+
+			if (abs.prevStackTrace == null)
+				abs.prevStackTrace = stack();
 			abs.neighborHashCode = result;
+			abs.hashStatement = abs.currentStmt;
 			return result;
 		}
 
@@ -456,10 +471,20 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		return true;
 	}
 
+	String prevNormalHashCodeLocation, prevSpecialHashCodeLocation;
+
+	private static String stack() {
+
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		new Exception().printStackTrace(pw);
+		String sStackTrace = sw.toString(); // stack trace as a string
+		return sStackTrace;
+	}
+
 	@Override
 	public int hashCode() {
-		if (this.hashCode != 0)
-			return hashCode;
+		int prevHashCode = hashCode;
 
 		final int prime = 31;
 		int result = 1;
@@ -472,6 +497,10 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		result = prime * result + ((postdominators == null) ? 0 : postdominators.hashCode());
 		result = prime * result + (dependsOnCutAP ? 1231 : 1237);
 		result = prime * result + (isImplicit ? 1231 : 1237);
+		if (this.hashCode != 0 && result != hashCode)
+			throw new RuntimeException("Ooops");
+		// prevHashCodeLocation = stack();
+
 		this.hashCode = result;
 
 		return this.hashCode;
@@ -546,8 +575,13 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 					}
 				}
 			}
+			originalAbstraction.setFinal();
 			return this.neighbors.add(originalAbstraction);
 		}
+	}
+
+	private void setFinal() {
+		isFinal = true;
 	}
 
 	public void setCorrespondingCallSite(Stmt callSite) {
@@ -636,6 +670,8 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	}
 
 	void setCurrentStmt(Stmt currentStmt) {
+		if (currentStmt != this.currentStmt && this.neighborHashCode != 0)
+			throw new RuntimeException("no");
 		this.currentStmt = currentStmt;
 	}
 
