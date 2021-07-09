@@ -42,6 +42,7 @@ import soot.jimple.Stmt;
 import soot.jimple.infoflow.AbstractInfoflow;
 import soot.jimple.infoflow.IInfoflow;
 import soot.jimple.infoflow.Infoflow;
+import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.InfoflowConfiguration.SootIntegrationMode;
 import soot.jimple.infoflow.android.InfoflowAndroidConfiguration.CallbackConfiguration;
 import soot.jimple.infoflow.android.InfoflowAndroidConfiguration.IccConfiguration;
@@ -94,6 +95,7 @@ import soot.jimple.infoflow.results.InfoflowPerformanceData;
 import soot.jimple.infoflow.results.InfoflowResults;
 import soot.jimple.infoflow.rifl.RIFLSourceSinkDefinitionProvider;
 import soot.jimple.infoflow.solver.cfg.IInfoflowCFG;
+import soot.jimple.infoflow.solver.executors.InterruptableExecutor;
 import soot.jimple.infoflow.solver.memory.IMemoryManager;
 import soot.jimple.infoflow.solver.memory.IMemoryManagerFactory;
 import soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinition;
@@ -102,6 +104,7 @@ import soot.jimple.infoflow.sourcesSinks.definitions.MethodSourceSinkDefinition;
 import soot.jimple.infoflow.sourcesSinks.manager.ISourceSinkManager;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.jimple.infoflow.taintWrappers.ITaintWrapperDataFlowAnalysis;
+import soot.jimple.infoflow.threading.DefaultExecutorFactory;
 import soot.jimple.infoflow.util.SystemClassHandler;
 import soot.jimple.infoflow.values.IValueProvider;
 import soot.options.Options;
@@ -1545,6 +1548,14 @@ public class SetupApplication implements ITaintWrapperDataFlowAnalysis {
 
 		// Create and run the data flow tracker
 		infoflow = createInfoflow();
+		infoflow.setExecutorFactory(new DefaultExecutorFactory() {
+
+			@Override
+			public InterruptableExecutor createExecutor(int numThreads, boolean allowSetSemantics,
+					InfoflowConfiguration config) {
+				return super.createExecutor(1, allowSetSemantics, config);
+			}
+		});
 		infoflow.addResultsAvailableHandler(resultAggregator);
 		infoflow.runAnalysis(sourceSinkManager, entryPointCreator.getGeneratedMainMethod());
 
