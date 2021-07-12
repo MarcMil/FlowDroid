@@ -23,6 +23,7 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	protected ExtensibleList<Stmt> callStack = null;
 	protected int neighborCounter = 0;
 	private int hashCode = 0;
+	public boolean sealed;
 
 	public SourceContextAndPath(ISourceSinkDefinition definition, AccessPath value, Stmt stmt) {
 		this(definition, value, stmt, null);
@@ -98,28 +99,36 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				Iterator<Abstraction> it = path.reverseIterator();
 				while (it.hasNext()) {
 					Abstraction a = it.next();
-					if (a == abs)
+					if (a == abs) {
+						System.out.println("SourceContextAndPath: -> a == abs = true");
 						return null;
+					}
 
 					// Do not run into loops. If we come back to the same
 					// abstraction, we don't got on with a neighbor
-					if (a.getNeighbors() != null && a.getNeighbors().contains(abs))
+					if (a.getNeighbors() != null && a.getNeighbors().contains(abs)) {
+						System.out.println("SourceContextAndPath: -> a.getNeighbors().contains(abs)");
 						return null;
+					}
 
 					// If this is exactly the same abstraction as one we have
 					// seen before, we skip it. Otherwise, we would run through
 					// loops infinitely.
 					if (a.getCurrentStmt() == abs.getCurrentStmt()
-							&& a.getCorrespondingCallSite() == abs.getCorrespondingCallSite() && a.equals(abs))
+							&& a.getCorrespondingCallSite() == abs.getCorrespondingCallSite() && a.equals(abs)) {
+						System.out.println("SourceContextAndPath: -> Same abs as seen before");
 						return null;
+					}
 				}
 
 				// We cannot leave the same method at two different sites
 				Abstraction topAbs = path.getLast();
 				if (topAbs.equals(abs) && topAbs.getCorrespondingCallSite() != null
 						&& topAbs.getCorrespondingCallSite() == abs.getCorrespondingCallSite()
-						&& topAbs.getCurrentStmt() != abs.getCurrentStmt())
+						&& topAbs.getCurrentStmt() != abs.getCurrentStmt()) {
+					System.out.println("SourceContextAndPath: -> Different sites");
 					return null;
+				}
 			}
 
 			scap = clone();
@@ -129,8 +138,10 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 			scap.path.add(abs);
 
 			if (pathConfig != null && pathConfig.getMaxPathLength() > 0
-					&& scap.path.size() > pathConfig.getMaxPathLength())
+					&& scap.path.size() > pathConfig.getMaxPathLength()) {
+				System.out.println("SourceContextAndPath: -> Path too long");
 				return null;
+			}
 		}
 
 		// Extend the call stack
@@ -140,13 +151,16 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 			if (scap.callStack == null)
 				scap.callStack = new ExtensibleList<Stmt>();
 			else if (pathConfig != null && pathConfig.getMaxCallStackSize() > 0
-					&& scap.callStack.size() >= pathConfig.getMaxCallStackSize())
+					&& scap.callStack.size() >= pathConfig.getMaxCallStackSize()) {
+				System.out.println("SourceContextAndPath: -> Call stack too long");
 				return null;
+			}
 			scap.callStack.add(abs.getCorrespondingCallSite());
 		}
 
 		this.neighborCounter = abs.getNeighbors() == null ? 0 : abs.getNeighbors().size();
 		return scap == null ? this : scap;
+
 	}
 
 	/**
@@ -185,6 +199,8 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	}
 
 	public void setNeighborCounter(int counter) {
+		if (sealed)
+			System.out.println();
 		this.neighborCounter = counter;
 	}
 
@@ -228,7 +244,11 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				return false;
 		}
 
-		return super.equals(other);
+		if (super.equals(other)) {
+			System.out.println();
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -258,5 +278,13 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	@Override
 	public String toString() {
 		return super.toString() + "\n\ton Path: " + getAbstractionPath();
+	}
+
+	public void seal() {
+		sealed = true;
+		if (path != null)
+			this.path.seal();
+		if (callStack != null)
+			this.callStack.seal();
 	}
 }
