@@ -198,8 +198,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	}
 
 	public void setNeighborCounter(int counter) {
-		if (sealed)
-			System.out.println();
 		this.neighborCounter = counter;
 	}
 
