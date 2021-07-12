@@ -241,11 +241,7 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				return false;
 		}
 
-		if (super.equals(other)) {
-			System.out.println("SourceContextAndPath: Equals is true for " + this + " and " + other);
-			return true;
-		}
-		return false;
+		return super.equals(other);
 	}
 
 	@Override
