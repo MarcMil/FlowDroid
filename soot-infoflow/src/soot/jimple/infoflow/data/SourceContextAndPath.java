@@ -23,7 +23,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	protected ExtensibleList<Stmt> callStack = null;
 	protected int neighborCounter = 0;
 	private int hashCode = 0;
-	public boolean sealed;
 
 	public SourceContextAndPath(ISourceSinkDefinition definition, AccessPath value, Stmt stmt) {
 		this(definition, value, stmt, null);
@@ -280,11 +279,4 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 		return super.toString() + "\n\ton Path: " + getAbstractionPath();
 	}
 
-	public void seal() {
-		sealed = true;
-		if (path != null)
-			this.path.seal();
-		if (callStack != null)
-			this.callStack.seal();
-	}
 }
