@@ -86,7 +86,8 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 
 				checkForSource(pred, extendedScap);
 				boolean b = pathCache.put(pred, extendedScap);
-				System.out.println("ContextSensitivePathBuilder: Was in cache #1: " + pred + ", " + extendedScap);
+				if (b)
+					System.out.println("ContextSensitivePathBuilder: Was in cache #1: " + pred + ", " + extendedScap);
 				return b;
 			}
 
@@ -121,7 +122,8 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 					return false;
 			}
 			boolean b = pathCache.put(pred, extendedScap);
-			System.out.println("ContextSensitivePathBuilder: Was in cache #2: " + pred + ", " + extendedScap);
+			if (b)
+				System.out.println("ContextSensitivePathBuilder: Was in cache #2: " + pred + ", " + extendedScap);
 			return b;
 		}
 
