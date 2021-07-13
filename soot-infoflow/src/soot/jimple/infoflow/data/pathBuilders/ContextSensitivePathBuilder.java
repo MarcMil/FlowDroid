@@ -85,7 +85,9 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 					return false;
 
 				checkForSource(pred, extendedScap);
-				return pathCache.put(pred, extendedScap);
+				boolean b = pathCache.put(pred, extendedScap);
+				System.out.println("ContextSensitivePathBuilder: Was in cache #1: " + pred + ", " + extendedScap);
+				return b;
 			}
 
 			// If we enter a method, we put it on the stack
@@ -118,7 +120,9 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 				if (existingPaths != null && existingPaths.size() > maxPaths)
 					return false;
 			}
-			return pathCache.put(pred, extendedScap);
+			boolean b = pathCache.put(pred, extendedScap);
+			System.out.println("ContextSensitivePathBuilder: Was in cache #2: " + pred + ", " + extendedScap);
+			return b;
 		}
 
 		@Override
