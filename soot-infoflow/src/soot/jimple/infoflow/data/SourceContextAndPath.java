@@ -99,7 +99,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				while (it.hasNext()) {
 					Abstraction a = it.next();
 					if (a == abs) {
-						System.out.println("SourceContextAndPath: -> a == abs = true");
 						return null;
 					}
 
@@ -108,7 +107,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 					// loops infinitely.
 					if (a.getCurrentStmt() == abs.getCurrentStmt()
 							&& a.getCorrespondingCallSite() == abs.getCorrespondingCallSite() && a.equals(abs)) {
-						System.out.println("SourceContextAndPath: -> Same abs as seen before");
 						return null;
 					}
 				}
@@ -118,7 +116,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				if (topAbs.equals(abs) && topAbs.getCorrespondingCallSite() != null
 						&& topAbs.getCorrespondingCallSite() == abs.getCorrespondingCallSite()
 						&& topAbs.getCurrentStmt() != abs.getCurrentStmt()) {
-					System.out.println("SourceContextAndPath: -> Different sites");
 					return null;
 				}
 			}
@@ -131,7 +128,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 
 			if (pathConfig != null && pathConfig.getMaxPathLength() > 0
 					&& scap.path.size() > pathConfig.getMaxPathLength()) {
-				System.out.println("SourceContextAndPath: -> Path too long");
 				return null;
 			}
 		}
@@ -144,7 +140,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 				scap.callStack = new ExtensibleList<Stmt>();
 			else if (pathConfig != null && pathConfig.getMaxCallStackSize() > 0
 					&& scap.callStack.size() >= pathConfig.getMaxCallStackSize()) {
-				System.out.println("SourceContextAndPath: -> Call stack too long");
 				return null;
 			}
 			scap.callStack.add(abs.getCorrespondingCallSite());

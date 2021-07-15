@@ -3,7 +3,6 @@ package soot.jimple.infoflow.data.pathBuilders;
 import java.util.HashSet;
 import java.util.Set;
 
-import soot.Scene;
 import soot.jimple.infoflow.InfoflowManager;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AbstractionAtSink;
@@ -37,8 +36,6 @@ public abstract class ConcurrentAbstractionPathBuilder extends AbstractAbstracti
 	public void computeTaintPaths(final Set<AbstractionAtSink> res) {
 		if (res == null || res.isEmpty())
 			return;
-		if (Scene.v().getSootClass("android.app.Activity").hasTag("Interesting"))
-			System.out.println();
 
 		logger.info("Obtainted {} connections between sources and sinks", res.size());
 
