@@ -101,14 +101,6 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 					if (a == abs) {
 						return null;
 					}
-
-					// If this is exactly the same abstraction as one we have
-					// seen before, we skip it. Otherwise, we would run through
-					// loops infinitely.
-					if (a.getCurrentStmt() == abs.getCurrentStmt()
-							&& a.getCorrespondingCallSite() == abs.getCorrespondingCallSite() && a.equals(abs)) {
-						return null;
-					}
 				}
 
 				// We cannot leave the same method at two different sites
