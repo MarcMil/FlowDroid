@@ -140,10 +140,12 @@ public class ComponentReachableMethods {
 
 					@Override
 					public void process(MethodOrMethodContext m) {
-						MethodOrMethodContext mm = unprocessedMethods.next();
-						Iterator<Edge> targets = filter.wrap(cg.edgesOutOf(mm));
-						if (targets.hasNext()) {
-							addMethods(new Targets(targets));
+						Iterator<Edge> of = cg.edgesOutOf(m);
+						if (of != null && of.hasNext()) {
+							Iterator<Edge> targets = filter.wrap(of);
+							if (targets.hasNext()) {
+								addMethods(new Targets(targets));
+							}
 						}
 
 					}
