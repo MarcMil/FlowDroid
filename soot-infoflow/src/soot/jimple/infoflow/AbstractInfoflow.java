@@ -879,6 +879,12 @@ public abstract class AbstractInfoflow implements IInfoflow {
 			if (config.getCallgraphAlgorithm() != CallgraphAlgorithm.OnDemand)
 				logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
 
+			// Make sure we compute the set of system classes beforehand, since this is not thread safe.
+			SystemClassHandler sch = SystemClassHandler.v();
+			for (SootClass c : Scene.v().getClasses()) {
+				sch.isClassInSystemPackage(c);
+			}
+
 			IInfoflowCFG iCfg = icfgFactory.buildBiDirICFG(config.getCallgraphAlgorithm(),
 					config.getEnableExceptionTracking());
 
