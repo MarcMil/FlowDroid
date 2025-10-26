@@ -72,6 +72,11 @@ public class TimeoutReason implements ISolverTerminationReason {
 	}
 
 	@Override
+	public String toString() {
+		return "Timeout: Elapsed " + timeElapsed + ", but configured timeout is " + timeout;
+	}
+
+	@Override
 	public ISolverTerminationReason combine(ISolverTerminationReason terminationReason) {
 		return new MultiReason(this, terminationReason);
 	}

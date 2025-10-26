@@ -53,4 +53,9 @@ public class OutOfMemoryReason implements ISolverTerminationReason {
 		return new MultiReason(this, terminationReason);
 	}
 
+	@Override
+	public String toString() {
+		return "Out of memory: Current memory is " + currentMemory;
+	}
+
 }
