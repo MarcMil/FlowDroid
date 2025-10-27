@@ -84,7 +84,7 @@ public class ComponentReachableMethods {
 		final Scene sc = Scene.v();
 		final FastHierarchy fh = Scene.v().getFastHierarchy();
 		final RefType runnable = RefType.v("java.lang.Runnable");
-		Filter filter = new Filter(new EdgePredicate() {
+		final EdgePredicate predicate = new EdgePredicate() {
 
 			@Override
 			public boolean want(Edge e) {
@@ -132,16 +132,17 @@ public class ComponentReachableMethods {
 				return true;
 			}
 
-		});
+		};
 		final CallGraph cg = sc.getCallGraph();
 
-		ParallelUtils.runIteratorParallel(unprocessedMethods,
+		ParallelUtils.runIteratorParallelUntilEnd(unprocessedMethods,
 				new ParallelUtils.ElementProcessor<MethodOrMethodContext>() {
 
 					@Override
 					public void process(MethodOrMethodContext m) {
 						Iterator<Edge> of = cg.edgesOutOf(m);
 						if (of != null && of.hasNext()) {
+							Filter filter = new Filter(predicate);
 							Iterator<Edge> targets = filter.wrap(of);
 							if (targets.hasNext()) {
 								addMethods(new Targets(targets));
