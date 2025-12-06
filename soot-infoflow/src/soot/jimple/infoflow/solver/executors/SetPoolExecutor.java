@@ -7,6 +7,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import soot.jimple.infoflow.solver.fastSolver.LocalWorklistTask;
+
 /**
  * Executor class that ensures that no two equal tasks are in the queue at the
  * same time
@@ -27,6 +29,10 @@ public class SetPoolExecutor extends InterruptableExecutor {
 	public void execute(Runnable command) {
 		// Make sure that we don't schedule a task for execution that is already
 		// in the queue
+		if (command instanceof LocalWorklistTask) {
+			LocalWorklistTask l = (LocalWorklistTask) command;
+			l.setExecutor(this);
+		}
 		if (waiting.add(command))
 			//for (int i = 0; i < 40; i++)
 			super.execute(command);
