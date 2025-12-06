@@ -1,9 +1,8 @@
 package soot.jimple.infoflow.solver.fastSolver;
 
 import java.util.ArrayDeque;
-import java.util.Set;
 
-import soot.jimple.infoflow.collect.ConcurrentHashSet;
+import soot.jimple.infoflow.solver.executors.SetPoolExecutor;
 
 /**
  * This special task may run multiple tasks on the same thread if they are
@@ -13,8 +12,12 @@ import soot.jimple.infoflow.collect.ConcurrentHashSet;
  */
 public abstract class LocalWorklistTask implements Runnable {
 	private ArrayDeque<Runnable> localTaskList = new ArrayDeque<>();
-	private Set<Object> set = new ConcurrentHashSet<>();
+	private SetPoolExecutor e;
 	private static final ThreadLocal<LocalWorklistTask> TASKS = new ThreadLocal<>();
+
+	public void setExecutor(SetPoolExecutor e) {
+		this.e = e;
+	}
 
 	@Override
 	public final void run() {
@@ -44,7 +47,7 @@ public abstract class LocalWorklistTask implements Runnable {
 	public static void scheduleLocal(Runnable task) {
 		LocalWorklistTask t = TASKS.get();
 		if (t != null) {
-			if (!t.set.add(task))
+			if (!t.e.waiting.add(task))
 				throw new RuntimeException("Double");
 			t.localTaskList.add(task);
 		}

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SetPoolExecutor extends InterruptableExecutor {
 
-	protected Set<Runnable> waiting = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
+	public Set<Runnable> waiting = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
 
 	public SetPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
 			BlockingQueue<Runnable> workQueue) {
@@ -28,6 +28,7 @@ public class SetPoolExecutor extends InterruptableExecutor {
 		// Make sure that we don't schedule a task for execution that is already
 		// in the queue
 		if (waiting.add(command))
+			//for (int i = 0; i < 40; i++)
 			super.execute(command);
 		else
 			throw new RuntimeException("Double");
