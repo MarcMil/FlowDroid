@@ -70,6 +70,16 @@ import soot.jimple.infoflow.util.BaseSelector;
 import soot.jimple.infoflow.util.ByReferenceBoolean;
 
 public class InfoflowProblem extends AbstractInfoflowProblem {
+	public static boolean USE_OLD;
+
+	private static void compareOldNew(Set<Abstraction> resOLD, Set<Abstraction> resNew) {
+		if (resNew == null) {
+			if (resOLD != null)
+				System.out.println("xxxx difference");
+		}
+		if (!resNew.equals(resOLD))
+			System.out.println("xxxx difference");
+	}
 
 	public InfoflowProblem(InfoflowManager manager, Abstraction zeroValue,
 			IPropagationRuleManagerFactory ruleManagerFactory) {
@@ -102,8 +112,14 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 								FlowFunctionType.NormalFlowFunction);
 
 					// Compute the new abstractions
-					Set<Abstraction> res = computeTargetsInternal(d1, source);
-					return notifyOutFlowHandlers(stmt, d1, source, res, FlowFunctionType.NormalFlowFunction);
+					USE_OLD = false;
+					Set<Abstraction> resNew = computeTargetsInternal(d1, source);
+					USE_OLD = true;
+					Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
+					USE_OLD = false;
+					compareOldNew(resOLD, resNew);
+
+					return notifyOutFlowHandlers(stmt, d1, source, resOLD, FlowFunctionType.NormalFlowFunction);
 				}
 
 				public abstract Set<Abstraction> computeTargetsInternal(Abstraction d1, Abstraction source);
@@ -432,13 +448,19 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction d1, Abstraction source) {
-						Set<Abstraction> res = computeTargetsInternal(d1, source);
-						if (res != null && !res.isEmpty() && d1 != null) {
+						USE_OLD = false;
+						Set<Abstraction> resNew = computeTargetsInternal(d1, source);
+						USE_OLD = true;
+						Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
+						USE_OLD = false;
+						compareOldNew(resOLD, resNew);
+
+						if (resOLD != null && !resOLD.isEmpty() && d1 != null) {
 							final IAliasingStrategy strategy = aliasing.getAliasingStrategy();
-							for (Abstraction abs : res)
+							for (Abstraction abs : resOLD)
 								strategy.injectCallingContext(abs, solver, dest, src, source, d1);
 						}
-						return notifyOutFlowHandlers(stmt, d1, source, res, FlowFunctionType.CallFlowFunction);
+						return notifyOutFlowHandlers(stmt, d1, source, resOLD, FlowFunctionType.CallFlowFunction);
 					}
 
 					private Set<Abstraction> computeTargetsInternal(Abstraction d1, Abstraction source) {
@@ -518,9 +540,16 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction source, Abstraction d1,
 							Collection<Abstraction> callerD1s) {
-						Set<Abstraction> res = computeTargetsInternal(source, d1, callerD1s);
+						USE_OLD = false;
+						Set<Abstraction> resNew = computeTargetsInternal(source, d1, callerD1s);
+						;
+						USE_OLD = true;
+						Set<Abstraction> resOLD = computeTargetsInternal(source, d1, callerD1s);
+						;
+						USE_OLD = false;
+						compareOldNew(resOLD, resNew);
 
-						return notifyOutFlowHandlers(exitStmt, d1, source, res, FlowFunctionType.ReturnFlowFunction);
+						return notifyOutFlowHandlers(exitStmt, d1, source, resOLD, FlowFunctionType.ReturnFlowFunction);
 					}
 
 					private Set<Abstraction> computeTargetsInternal(Abstraction source, Abstraction calleeD1,
@@ -777,8 +806,14 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction d1, Abstraction source) {
-						Set<Abstraction> res = computeTargetsInternal(d1, source);
-						return notifyOutFlowHandlers(call, d1, source, res, FlowFunctionType.CallToReturnFlowFunction);
+						USE_OLD = false;
+						Set<Abstraction> resNew = computeTargetsInternal(d1, source);
+						USE_OLD = true;
+						Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
+						USE_OLD = false;
+						compareOldNew(resOLD, resNew);
+						return notifyOutFlowHandlers(call, d1, source, resNew,
+								FlowFunctionType.CallToReturnFlowFunction);
 					}
 
 					private Set<Abstraction> computeTargetsInternal(Abstraction d1, Abstraction source) {

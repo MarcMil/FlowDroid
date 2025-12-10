@@ -81,6 +81,7 @@ import soot.jimple.infoflow.methodSummary.data.summary.SummaryMetaData;
 import soot.jimple.infoflow.methodSummary.taintWrappers.resolvers.SummaryQuery;
 import soot.jimple.infoflow.methodSummary.taintWrappers.resolvers.SummaryResolver;
 import soot.jimple.infoflow.methodSummary.taintWrappers.resolvers.SummaryResponse;
+import soot.jimple.infoflow.problems.InfoflowProblem;
 import soot.jimple.infoflow.solver.EndSummary;
 import soot.jimple.infoflow.solver.IFollowReturnsPastSeedsHandler;
 import soot.jimple.infoflow.taintWrappers.IReversibleTaintWrapper;
@@ -786,6 +787,11 @@ public class SummaryTaintWrapper implements IReversibleTaintWrapper, ICollection
 					return Collections.singleton(taintedAbs);
 				else {
 					reportMissingSummary(callee, stmt, taintedAbs);
+					if (InfoflowProblem.USE_OLD) {
+
+						return fallbackWrapper == null ? null
+								: fallbackWrapper.getTaintsForMethod(stmt, d1, taintedAbs);
+					}
 					if (fallbackWrapper != null)
 						return fallbackWrapper.getTaintsForMethod(stmt, d1, taintedAbs);
 					// when we have code, we should kill the incoming taint.

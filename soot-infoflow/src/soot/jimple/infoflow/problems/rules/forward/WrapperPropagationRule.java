@@ -15,6 +15,7 @@ import soot.jimple.infoflow.aliasing.Aliasing;
 import soot.jimple.infoflow.cfg.FlowDroidSourceStatement;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AccessPath;
+import soot.jimple.infoflow.problems.InfoflowProblem;
 import soot.jimple.infoflow.problems.rules.AbstractTaintPropagationRule;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.jimple.infoflow.typing.TypeUtils;
@@ -45,66 +46,129 @@ public class WrapperPropagationRule extends AbstractTaintPropagationRule {
 	 */
 	protected Set<Abstraction> computeWrapperTaints(Abstraction d1, final Stmt iStmt, Abstraction source,
 			ByReferenceBoolean killSource) {
-		// Do not process zero abstractions
-		if (source == getZeroValue())
-			return null;
+		if (InfoflowProblem.USE_OLD) {
+			// Do not process zero abstractions
+			if (source == getZeroValue())
+				return null;
 
-		// If we don't have a taint wrapper, there's nothing we can do here
-		if (getManager().getTaintWrapper() == null)
-			return null;
+			// If we don't have a taint wrapper, there's nothing we can do here
+			if (getManager().getTaintWrapper() == null)
+				return null;
 
-		// Do not check taints that are not mentioned anywhere in the call
-		final Aliasing aliasing = getAliasing();
-		AccessPath sourceAP = source.getAccessPath();
-		if (aliasing != null && !sourceAP.isStaticFieldRef() && !sourceAP.isEmpty()) {
-			boolean found = false;
+			// Do not check taints that are not mentioned anywhere in the call
+			final Aliasing aliasing = getAliasing();
+			if (aliasing != null && !source.getAccessPath().isStaticFieldRef() && !source.getAccessPath().isEmpty()) {
+				boolean found = false;
 
-			// The base object must be tainted
-			if (iStmt.getInvokeExpr() instanceof InstanceInvokeExpr) {
-				InstanceInvokeExpr iiExpr = (InstanceInvokeExpr) iStmt.getInvokeExpr();
-				found = aliasing.mayAlias(iiExpr.getBase(), sourceAP.getPlainValue());
+				// The base object must be tainted
+				if (iStmt.getInvokeExpr() instanceof InstanceInvokeExpr) {
+					InstanceInvokeExpr iiExpr = (InstanceInvokeExpr) iStmt.getInvokeExpr();
+					found = aliasing.mayAlias(iiExpr.getBase(), source.getAccessPath().getPlainValue());
+				}
+
+				// or one of the parameters must be tainted
+				if (!found)
+					for (int paramIdx = 0; paramIdx < iStmt.getInvokeExpr().getArgCount(); paramIdx++)
+						if (aliasing.mayAlias(source.getAccessPath().getPlainValue(),
+								iStmt.getInvokeExpr().getArg(paramIdx))) {
+							found = true;
+							break;
+						}
+
+				// If nothing is tainted, we don't have any taints to propagate
+				if (!found)
+					return null;
 			}
 
-			// or one of the parameters must be tainted
-			if (!found)
-				for (int paramIdx = 0; paramIdx < iStmt.getInvokeExpr().getArgCount(); paramIdx++)
-					if (aliasing.mayAlias(sourceAP.getPlainValue(), iStmt.getInvokeExpr().getArg(paramIdx))) {
-						found = true;
-						break;
-					}
-
-			// If nothing is tainted, we don't have any taints to propagate
-			if (!found)
-				return null;
-		}
-
-		final InfoflowManager manager = getManager();
-		// Do not apply the taint wrapper to statements that are sources on their own
-		if (!manager.getConfig().getInspectSources()) {
-			// Check whether this can be a source at all
-			if (iStmt.hasTag(FlowDroidSourceStatement.TAG_NAME))
-				return null;
-		}
-
-		final ITaintPropagationWrapper taintwrapper = manager.getTaintWrapper();
-		Set<Abstraction> res = taintwrapper.getTaintsForMethod(iStmt, d1, source);
-		if (res != null) {
-			Set<Abstraction> resWithAliases = new HashSet<>(res);
-			for (Abstraction abs : res) {
-				// The new abstraction gets activated where it was generated
-				if (!abs.equals(source))
-					checkAndPropagateAlias(d1, iStmt, resWithAliases, abs);
+			// Do not apply the taint wrapper to statements that are sources on their own
+			if (!getManager().getConfig().getInspectSources()) {
+				// Check whether this can be a source at all
+				if (iStmt.hasTag(FlowDroidSourceStatement.TAG_NAME))
+					return null;
 			}
-			res = resWithAliases;
+
+			Set<Abstraction> res = getManager().getTaintWrapper().getTaintsForMethod(iStmt, d1, source);
+			if (res != null) {
+				Set<Abstraction> resWithAliases = new HashSet<>(res);
+				for (Abstraction abs : res) {
+					// The new abstraction gets activated where it was generated
+					if (!abs.equals(source))
+						checkAndPropagateAlias(d1, iStmt, resWithAliases, abs);
+				}
+				res = resWithAliases;
+			}
+
+			// We assume that a taint wrapper returns the complete set of taints for
+			// exclusive methods. Thus, if the
+			// incoming taint should be kept alive, the taint wrapper needs to add it to the
+			// outgoing set.
+			killSource.value = manager.getTaintWrapper() != null
+					&& manager.getTaintWrapper().isExclusive(iStmt, source);
+
+			return res;
+		} else {
+
+			// Do not process zero abstractions
+			if (source == getZeroValue())
+				return null;
+
+			// If we don't have a taint wrapper, there's nothing we can do here
+			if (getManager().getTaintWrapper() == null)
+				return null;
+
+			// Do not check taints that are not mentioned anywhere in the call
+			final Aliasing aliasing = getAliasing();
+			AccessPath sourceAP = source.getAccessPath();
+			if (aliasing != null && !sourceAP.isStaticFieldRef() && !sourceAP.isEmpty()) {
+				boolean found = false;
+
+				// The base object must be tainted
+				if (iStmt.getInvokeExpr() instanceof InstanceInvokeExpr) {
+					InstanceInvokeExpr iiExpr = (InstanceInvokeExpr) iStmt.getInvokeExpr();
+					found = aliasing.mayAlias(iiExpr.getBase(), sourceAP.getPlainValue());
+				}
+
+				// or one of the parameters must be tainted
+				if (!found)
+					for (int paramIdx = 0; paramIdx < iStmt.getInvokeExpr().getArgCount(); paramIdx++)
+						if (aliasing.mayAlias(sourceAP.getPlainValue(), iStmt.getInvokeExpr().getArg(paramIdx))) {
+							found = true;
+							break;
+						}
+
+				// If nothing is tainted, we don't have any taints to propagate
+				if (!found)
+					return null;
+			}
+
+			final InfoflowManager manager = getManager();
+			// Do not apply the taint wrapper to statements that are sources on their own
+			if (!manager.getConfig().getInspectSources()) {
+				// Check whether this can be a source at all
+				if (iStmt.hasTag(FlowDroidSourceStatement.TAG_NAME))
+					return null;
+			}
+
+			final ITaintPropagationWrapper taintwrapper = manager.getTaintWrapper();
+			Set<Abstraction> res = taintwrapper.getTaintsForMethod(iStmt, d1, source);
+			if (res != null) {
+				Set<Abstraction> resWithAliases = new HashSet<>(res);
+				for (Abstraction abs : res) {
+					// The new abstraction gets activated where it was generated
+					if (!abs.equals(source))
+						checkAndPropagateAlias(d1, iStmt, resWithAliases, abs);
+				}
+				res = resWithAliases;
+			}
+
+			// We assume that a taint wrapper returns the complete set of taints for
+			// exclusive methods. Thus, if the
+			// incoming taint should be kept alive, the taint wrapper needs to add it to the
+			// outgoing set.
+			killSource.value = taintwrapper.isExclusive(iStmt, source) && !source.isPrimitiveOrImmutable();
+
+			return res;
 		}
-
-		// We assume that a taint wrapper returns the complete set of taints for
-		// exclusive methods. Thus, if the
-		// incoming taint should be kept alive, the taint wrapper needs to add it to the
-		// outgoing set.
-		killSource.value = taintwrapper.isExclusive(iStmt, source) && !source.isPrimitiveOrImmutable();
-
-		return res;
 	}
 
 	/**
