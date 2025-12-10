@@ -117,11 +117,14 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 								FlowFunctionType.NormalFlowFunction);
 
 					// Compute the new abstractions
-					USE_OLD = false;
-					Set<Abstraction> resNew = computeTargetsInternal(d1, source);
-					USE_OLD = true;
-					Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
-					USE_OLD = false;
+					Set<Abstraction> resOLD, resNew;
+					synchronized (LOCK) {
+						USE_OLD = false;
+						resNew = computeTargetsInternal(d1, source);
+						USE_OLD = true;
+						resOLD = computeTargetsInternal(d1, source);
+						USE_OLD = false;
+					}
 					compareOldNew(resOLD, resNew);
 
 					return notifyOutFlowHandlers(stmt, d1, source, resOLD, FlowFunctionType.NormalFlowFunction);
@@ -453,11 +456,14 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction d1, Abstraction source) {
-						USE_OLD = false;
-						Set<Abstraction> resNew = computeTargetsInternal(d1, source);
-						USE_OLD = true;
-						Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
-						USE_OLD = false;
+						Set<Abstraction> resOLD, resNew;
+						synchronized (LOCK) {
+							USE_OLD = false;
+							resNew = computeTargetsInternal(d1, source);
+							USE_OLD = true;
+							resOLD = computeTargetsInternal(d1, source);
+							USE_OLD = false;
+						}
 						compareOldNew(resOLD, resNew);
 
 						if (resOLD != null && !resOLD.isEmpty() && d1 != null) {
@@ -545,13 +551,16 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction source, Abstraction d1,
 							Collection<Abstraction> callerD1s) {
-						USE_OLD = false;
-						Set<Abstraction> resNew = computeTargetsInternal(source, d1, callerD1s);
-						;
-						USE_OLD = true;
-						Set<Abstraction> resOLD = computeTargetsInternal(source, d1, callerD1s);
-						;
-						USE_OLD = false;
+						Set<Abstraction> resOLD, resNew;
+						synchronized (LOCK) {
+							USE_OLD = false;
+							resNew = computeTargetsInternal(source, d1, callerD1s);
+							;
+							USE_OLD = true;
+							resOLD = computeTargetsInternal(source, d1, callerD1s);
+							;
+							USE_OLD = false;
+						}
 						compareOldNew(resOLD, resNew);
 
 						return notifyOutFlowHandlers(exitStmt, d1, source, resOLD, FlowFunctionType.ReturnFlowFunction);
@@ -811,11 +820,12 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction d1, Abstraction source) {
+						Set<Abstraction> resOLD, resNew;
 						synchronized (LOCK) {
 							USE_OLD = false;
-							Set<Abstraction> resNew = computeTargetsInternal(d1, source);
+							resNew = computeTargetsInternal(d1, source);
 							USE_OLD = true;
-							Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
+							resOLD = computeTargetsInternal(d1, source);
 							USE_OLD = false;
 						}
 						compareOldNew(resOLD, resNew);
