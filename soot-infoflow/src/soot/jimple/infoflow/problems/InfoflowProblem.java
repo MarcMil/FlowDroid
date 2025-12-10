@@ -71,13 +71,18 @@ import soot.jimple.infoflow.util.ByReferenceBoolean;
 
 public class InfoflowProblem extends AbstractInfoflowProblem {
 	public static boolean USE_OLD;
+	public static Object LOCK = new Object();
 
 	private static void compareOldNew(Set<Abstraction> resOLD, Set<Abstraction> resNew) {
 		if (resNew == null) {
 			if (resOLD != null)
 				System.out.println("xxxx difference");
 		}
-		if (!resNew.equals(resOLD))
+		if (resOLD == null)
+			resOLD = Collections.emptySet();
+		if (resNew == null)
+			resNew = Collections.emptySet();
+		if (!resNew.equals(resOLD) && !resOLD.isEmpty())
 			System.out.println("xxxx difference");
 	}
 
@@ -806,11 +811,13 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 
 					@Override
 					public Set<Abstraction> computeTargets(Abstraction d1, Abstraction source) {
-						USE_OLD = false;
-						Set<Abstraction> resNew = computeTargetsInternal(d1, source);
-						USE_OLD = true;
-						Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
-						USE_OLD = false;
+						synchronized (LOCK) {
+							USE_OLD = false;
+							Set<Abstraction> resNew = computeTargetsInternal(d1, source);
+							USE_OLD = true;
+							Set<Abstraction> resOLD = computeTargetsInternal(d1, source);
+							USE_OLD = false;
+						}
 						compareOldNew(resOLD, resNew);
 						return notifyOutFlowHandlers(call, d1, source, resNew,
 								FlowFunctionType.CallToReturnFlowFunction);
