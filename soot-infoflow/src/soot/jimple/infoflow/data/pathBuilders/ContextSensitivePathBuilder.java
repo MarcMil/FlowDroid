@@ -12,7 +12,6 @@ import soot.jimple.Stmt;
 import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.InfoflowManager;
 import soot.jimple.infoflow.collect.ConcurrentHashSet;
-import soot.jimple.infoflow.collect.ConcurrentIdentityHashMultiMap;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AbstractionAtSink;
 import soot.jimple.infoflow.data.SourceContext;
@@ -21,6 +20,8 @@ import soot.jimple.infoflow.results.InfoflowResults;
 import soot.jimple.infoflow.results.ResultSinkInfo;
 import soot.jimple.infoflow.results.ResultSourceInfo;
 import soot.jimple.infoflow.solver.executors.InterruptableExecutor;
+import soot.util.ConcurrentHashMultiMap;
+import soot.util.MultiMap;
 
 /**
  * Class for reconstructing abstraction paths from sinks to source. This builder
@@ -31,7 +32,7 @@ import soot.jimple.infoflow.solver.executors.InterruptableExecutor;
  */
 public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilder {
 
-	protected ConcurrentIdentityHashMultiMap<Abstraction, SourceContextAndPath> pathCache = new ConcurrentIdentityHashMultiMap<>();
+	protected MultiMap<Abstraction, SourceContextAndPath> pathCache = new ConcurrentHashMultiMap<>();
 
 	// Set holds all paths that reach an already cached subpath
 	protected ConcurrentHashSet<SourceContextAndPath> deferredPaths = new ConcurrentHashSet<>();
@@ -283,7 +284,7 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 		super.reset();
 		deferredPaths = new ConcurrentHashSet<>();
 		sourceReachingScaps = new ConcurrentHashSet<>();
-		pathCache = new ConcurrentIdentityHashMultiMap<>();
+		pathCache = new ConcurrentHashMultiMap<>();
 	}
 
 	/**
