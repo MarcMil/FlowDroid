@@ -169,8 +169,12 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 			final int maxPaths = config.getPathConfiguration().getMaxPathsPerAbstraction();
 			if (maxPaths > 0) {
 				Set<SourceContextAndPath> existingPaths = pathCache.get(pred);
-				if (existingPaths != null && existingPaths.size() > maxPaths)
-					return PathProcessingResult.INFEASIBLE_OR_MAX_PATHS_REACHED;
+				if (existingPaths != null) {
+					if (existingPaths.size() > maxPaths)
+						return PathProcessingResult.INFEASIBLE_OR_MAX_PATHS_REACHED;
+					//Use set directly instead of searching in the patch cache again
+					return existingPaths.add(extendedScap) ? PathProcessingResult.NEW : PathProcessingResult.CACHED;
+				}
 			}
 
 			return pathCache.put(pred, extendedScap) ? PathProcessingResult.NEW : PathProcessingResult.CACHED;
