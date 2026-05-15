@@ -25,6 +25,7 @@ import soot.Unit;
 import soot.jimple.Stmt;
 import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.collect.AtomicBitSet;
+import soot.jimple.infoflow.collect.ConcurrentHashSet;
 import soot.jimple.infoflow.solver.cfg.IInfoflowCFG.UnitContainer;
 import soot.jimple.infoflow.solver.fastSolver.FastSolverLinkedNode;
 import soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinition;
@@ -73,8 +74,11 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	/**
 	 * The postdominators we need to pass in order to leave the current conditional
 	 * branch. Do not use the synchronized Stack class here to avoid deadlocks.
+	 * 
+	 * During path reconstruction, this field is not needed anymore. To save memory,
+	 * we reuse that field to store a set for the pathcache instead.
 	 */
-	protected List<UnitContainer> postdominators = null;
+	protected Collection<?> postdominatorsOrPathCache = null;
 	protected Unit dominator = null;
 	protected boolean isImplicit = false;
 
@@ -125,8 +129,9 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			turnUnit = original.turnUnit;
 			assert activationUnit == null || flowSensitiveAliasing;
 
-			postdominators = original.postdominators == null ? null
-					: new ArrayList<UnitContainer>(original.postdominators);
+			if (original.postdominatorsOrPathCache instanceof List)
+				postdominatorsOrPathCache = original.postdominatorsOrPathCache == null ? null
+						: new ArrayList<>(original.postdominatorsOrPathCache);
 			dominator = original.dominator;
 
 			dependsOnCutAP = original.dependsOnCutAP;
@@ -160,7 +165,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		if (a == null)
 			return null;
 
-		a.postdominators = null;
+		a.postdominatorsOrPathCache = null;
 		a.dominator = null;
 		a.activationUnit = activationUnit;
 		a.dependsOnCutAP |= a.getAccessPath().isCutOffApproximation();
@@ -210,7 +215,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		abs.propagationPathLength = propagationPathLength + 1;
 
 		if (!abs.getAccessPath().isEmpty())
-			abs.postdominators = null;
+			abs.postdominatorsOrPathCache = null;
 		if (!abs.isAbstractionActive())
 			abs.dependsOnCutAP = abs.dependsOnCutAP || p.isCutOffApproximation();
 
@@ -311,17 +316,19 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	public Abstraction deriveConditionalAbstractionEnter(UnitContainer postdom, Stmt conditionalUnit) {
 		assert this.isAbstractionActive();
 
-		if (postdominators != null && postdominators.contains(postdom))
+		if (postdominatorsOrPathCache != null && postdominatorsOrPathCache.contains(postdom)) {
+			assert postdominatorsOrPathCache instanceof List;
 			return this;
+		}
 
 		Abstraction abs = deriveNewAbstractionMutable(AccessPath.getEmptyAccessPath(), conditionalUnit);
 		if (abs == null)
 			return null;
 
-		if (abs.postdominators == null)
-			abs.postdominators = Collections.singletonList(postdom);
+		if (abs.postdominatorsOrPathCache == null)
+			abs.postdominatorsOrPathCache = Collections.singletonList(postdom);
 		else
-			abs.postdominators.add(0, postdom);
+			((List<UnitContainer>) abs.postdominatorsOrPathCache).add(0, postdom);
 		return abs;
 	}
 
@@ -335,25 +342,26 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 
 		// Postdominators are only kept intraprocedurally in order to not
 		// mess up the summary functions with caller-side information
-		abs.postdominators = null;
+		abs.postdominatorsOrPathCache = null;
 
 		return abs;
 	}
 
 	public Abstraction dropTopPostdominator() {
-		if (postdominators == null || postdominators.isEmpty())
+		if (postdominatorsOrPathCache == null || postdominatorsOrPathCache.isEmpty())
 			return this;
+		assert postdominatorsOrPathCache instanceof List;
 
 		Abstraction abs = clone();
 		abs.sourceContext = null;
-		abs.postdominators.remove(0);
+		((List<UnitContainer>) abs.postdominatorsOrPathCache).remove(0);
 		return abs;
 	}
 
 	public UnitContainer getTopPostdominator() {
-		if (postdominators == null || postdominators.isEmpty())
+		if (postdominatorsOrPathCache == null || postdominatorsOrPathCache.isEmpty())
 			return null;
-		return this.postdominators.get(0);
+		return ((List<UnitContainer>) this.postdominatorsOrPathCache).get(0);
 	}
 
 	public boolean isTopPostdominator(Unit u) {
@@ -515,11 +523,13 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			return false;
 		if (this.exceptionThrown != other.exceptionThrown)
 			return false;
-		if (postdominators == null) {
-			if (other.postdominators != null)
+		if (postdominatorsOrPathCache instanceof List || other.postdominatorsOrPathCache instanceof List) {
+			if (postdominatorsOrPathCache == null) {
+				if (other.postdominatorsOrPathCache != null)
+					return false;
+			} else if (!postdominatorsOrPathCache.equals(other.postdominatorsOrPathCache))
 				return false;
-		} else if (!postdominators.equals(other.postdominators))
-			return false;
+		}
 		if (dominator == null) {
 			if (other.dominator != null)
 				return false;
@@ -546,7 +556,8 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		result = prime * result + ((activationUnit == null) ? 0 : activationUnit.hashCode());
 		result = prime * result + ((turnUnit == null) ? 0 : turnUnit.hashCode());
 		result = prime * result + (exceptionThrown ? 1231 : 1237);
-		result = prime * result + ((postdominators == null) ? 0 : postdominators.hashCode());
+		if (postdominatorsOrPathCache instanceof List)
+			result = prime * result + ((postdominatorsOrPathCache == null) ? 0 : postdominatorsOrPathCache.hashCode());
 		result = prime * result + ((dominator == null) ? 0 : dominator.hashCode());
 		result = prime * result + (dependsOnCutAP ? 1231 : 1237);
 		result = prime * result + (isImplicit ? 1231 : 1237);
@@ -711,7 +722,8 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	}
 
 	/**
-	 * Returns true when the abstraction represents primitive (e.g. int, long, etc) or immutable (e.g. String) data
+	 * Returns true when the abstraction represents primitive (e.g. int, long, etc)
+	 * or immutable (e.g. String) data
 	 */
 	public boolean isPrimitiveOrImmutable() {
 		AccessPath ap = getAccessPath();
@@ -721,6 +733,28 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		if (TypeUtils.isStringType(bt) && !ap.getCanHaveImmutableAliases())
 			return true;
 		return false;
+	}
+
+	public Set<SourceContextAndPath> getPathCacheUnsafe() {
+		Collection<?> pd = postdominatorsOrPathCache;
+		if (pd instanceof Set)
+			return (Set<SourceContextAndPath>) postdominatorsOrPathCache;
+		return null;
+	}
+
+	public Set<SourceContextAndPath> getPathCache() {
+		Collection<?> pd = postdominatorsOrPathCache;
+		if (pd instanceof Set)
+			return (Set<SourceContextAndPath>) postdominatorsOrPathCache;
+		synchronized (this) {
+			pd = this.postdominatorsOrPathCache;
+			if (pd == null || !(pd instanceof Set)) {
+				pd = new ConcurrentHashSet<SourceContextAndPath>();
+				this.postdominatorsOrPathCache = pd;
+
+			}
+			return (Set<SourceContextAndPath>) pd;
+		}
 	}
 
 }
