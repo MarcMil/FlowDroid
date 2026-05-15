@@ -556,8 +556,6 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		result = prime * result + ((activationUnit == null) ? 0 : activationUnit.hashCode());
 		result = prime * result + ((turnUnit == null) ? 0 : turnUnit.hashCode());
 		result = prime * result + (exceptionThrown ? 1231 : 1237);
-		if (postdominatorsOrPathCache instanceof List)
-			result = prime * result + ((postdominatorsOrPathCache == null) ? 0 : postdominatorsOrPathCache.hashCode());
 		result = prime * result + ((dominator == null) ? 0 : dominator.hashCode());
 		result = prime * result + (dependsOnCutAP ? 1231 : 1237);
 		result = prime * result + (isImplicit ? 1231 : 1237);
@@ -755,6 +753,13 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			}
 			return (Set<SourceContextAndPath>) pd;
 		}
+	}
+
+	public void clearPathCache() {
+		Collection<?> pd = postdominatorsOrPathCache;
+		if (pd instanceof Set)
+			postdominatorsOrPathCache = null;
+
 	}
 
 }

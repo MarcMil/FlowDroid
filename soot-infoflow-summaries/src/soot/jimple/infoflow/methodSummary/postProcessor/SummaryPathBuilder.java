@@ -217,6 +217,9 @@ class SummaryPathBuilder extends ContextSensitivePathBuilder {
 	 */
 	public void clear() {
 		super.getResults().clear();
+		for (Abstraction a : visitedAbstractions) {
+			a.clearPathCache();
+		}
 		resultInfos.clear();
 		visitedAbstractions.clear();
 		deferredPaths.clear();
