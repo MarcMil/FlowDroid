@@ -3,6 +3,7 @@ package soot.jimple.infoflow.data.pathBuilders;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -168,12 +169,17 @@ public class ContextSensitivePathBuilder extends ConcurrentAbstractionPathBuilde
 
 			final int maxPaths = config.getPathConfiguration().getMaxPathsPerAbstraction();
 			if (maxPaths > 0) {
-				Set<SourceContextAndPath> existingPaths = pathCache.get(pred);
-				if (existingPaths != null && existingPaths.size() > maxPaths)
+				ConcurrentMap<SourceContextAndPath, SourceContextAndPath> existingPaths = pathCache.findSet(pred);
+				final int actualSize = existingPaths.size();
+				if (actualSize > maxPaths)
 					return PathProcessingResult.INFEASIBLE_OR_MAX_PATHS_REACHED;
-			}
 
-			return pathCache.put(pred, extendedScap) ? PathProcessingResult.NEW : PathProcessingResult.CACHED;
+				//Use set directly instead of searching in the patch cache again
+				return existingPaths.putIfAbsent(extendedScap, extendedScap) == null ? PathProcessingResult.NEW
+						: PathProcessingResult.CACHED;
+			} else {
+				return pathCache.put(pred, extendedScap) ? PathProcessingResult.NEW : PathProcessingResult.CACHED;
+			}
 		}
 
 		@Override

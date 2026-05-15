@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import soot.util.AbstractMultiMap;
-import soot.util.HashMultiMap;
 import soot.util.MultiMap;
 
 /**
@@ -73,7 +72,7 @@ public class ConcurrentIdentityHashMultiMap<K, V> extends AbstractMultiMap<K, V>
 		return new ConcurrentHashMap<V, V>();
 	}
 
-	private ConcurrentMap<V, V> findSet(K key) {
+	public ConcurrentMap<V, V> findSet(K key) {
 		ConcurrentMap<V, V> s = m.get(key);
 		if (s == null) {
 			synchronized (this) {
