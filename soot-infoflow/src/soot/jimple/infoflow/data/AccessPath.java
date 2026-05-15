@@ -20,6 +20,7 @@ import soot.SootField;
 import soot.Type;
 import soot.Value;
 import soot.jimple.ArrayRef;
+import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.Jimple;
 import soot.jimple.StaticFieldRef;
@@ -103,8 +104,7 @@ public class AccessPath implements Cloneable {
 		if (val == null)
 			return false;
 
-		return val instanceof Local || val instanceof InstanceFieldRef || val instanceof StaticFieldRef
-				|| val instanceof ArrayRef;
+		return val instanceof Local || val instanceof FieldRef || val instanceof ArrayRef;
 	}
 
 	public Local getPlainValue() {

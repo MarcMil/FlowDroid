@@ -495,7 +495,7 @@ public class Aliasing {
 
 		if (baseValue instanceof Local)
 			return source.getAccessPath().isLocal();
-		else if (baseValue instanceof InstanceFieldRef || baseValue instanceof StaticFieldRef)
+		else if (baseValue instanceof FieldRef)
 			return source.getAccessPath().getFragmentCount() == 1;
 
 		throw new RuntimeException("Unexpected left side");
