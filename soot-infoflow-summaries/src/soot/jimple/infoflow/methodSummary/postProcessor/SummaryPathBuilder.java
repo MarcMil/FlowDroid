@@ -219,7 +219,6 @@ class SummaryPathBuilder extends ContextSensitivePathBuilder {
 		super.getResults().clear();
 		resultInfos.clear();
 		visitedAbstractions.clear();
-		pathCache.clear();
 		deferredPaths.clear();
 		sourceReachingScaps.clear();
 	}
@@ -247,7 +246,7 @@ class SummaryPathBuilder extends ContextSensitivePathBuilder {
 		scap = scap.extendPath(abs.getAbstraction());
 
 		if (scap != null) {
-			if (pathCache.put(abs.getAbstraction(), scap))
+			if (abs.getAbstraction().getPathCache().add(scap))
 				if (!checkForSource(abs.getAbstraction(), scap))
 					return new SourceFindingTask(abs.getAbstraction());
 		}
