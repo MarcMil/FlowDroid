@@ -40,6 +40,10 @@ import soot.jimple.infoflow.typing.TypeUtils;
  */
 public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction, Unit> {
 
+	private static final Object PATH_FLAG_LOCK = new Object();
+
+	private static final Object PATH_CACHE_LOCK = new Object();
+
 	protected static boolean flowSensitiveAliasing = true;
 
 	/**
@@ -664,7 +668,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	 */
 	public boolean registerPathFlag(int id, int maxSize) {
 		if (pathFlags == null || pathFlags.getLargestInt() < maxSize) {
-			synchronized (this) {
+			synchronized (PATH_FLAG_LOCK) {
 				if (pathFlags == null) {
 					// Make sure that the field is set only after the
 					// constructor
@@ -744,7 +748,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		Collection<?> pd = postdominatorsOrPathCache;
 		if (pd instanceof Set)
 			return (Set<SourceContextAndPath>) postdominatorsOrPathCache;
-		synchronized (this) {
+		synchronized (PATH_CACHE_LOCK) {
 			pd = this.postdominatorsOrPathCache;
 			if (pd == null || !(pd instanceof Set)) {
 				pd = new ConcurrentHashSet<SourceContextAndPath>();
