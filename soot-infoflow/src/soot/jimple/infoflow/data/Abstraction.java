@@ -25,7 +25,6 @@ import soot.Unit;
 import soot.jimple.Stmt;
 import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.collect.AtomicBitSet;
-import soot.jimple.infoflow.collect.ConcurrentHashSet;
 import soot.jimple.infoflow.solver.cfg.IInfoflowCFG.UnitContainer;
 import soot.jimple.infoflow.solver.fastSolver.FastSolverLinkedNode;
 import soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinition;
@@ -737,31 +736,64 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		return false;
 	}
 
-	public Set<SourceContextAndPath> getPathCacheUnsafe() {
+	/**
+	 * Returns the patch cache if it exists and the given generation matches the
+	 * path cache generation
+	 * 
+	 * @param generation is used to differentiate different pathbuilder runs
+	 * @return the path cache or null
+	 */
+	public PathCache getPathCacheUnsafe(int generation) {
 		Collection<?> pd = postdominatorsOrPathCache;
-		if (pd instanceof Set)
-			return (Set<SourceContextAndPath>) postdominatorsOrPathCache;
+		if (pd instanceof PathCache) {
+			PathCache pc = (PathCache) pd;
+			if (pc.getGeneration() == generation) {
+				return (PathCache) pc;
+			}
+		}
 		return null;
 	}
 
-	public Set<SourceContextAndPath> getPathCache() {
+	/**
+	 * Returns the patch cache of the given generation.
+	 * 
+	 * @param generation is used to differentiate different pathbuilder runs
+	 * @return the path cache
+	 */
+	public PathCache getPathCache(int generation) {
 		Collection<?> pd = postdominatorsOrPathCache;
-		if (pd instanceof Set)
-			return (Set<SourceContextAndPath>) postdominatorsOrPathCache;
+		if (pd instanceof PathCache) {
+			PathCache pc = (PathCache) pd;
+			pc = newGen(generation, pc);
+			return (PathCache) pc;
+		}
 		synchronized (PATH_CACHE_LOCK) {
 			pd = this.postdominatorsOrPathCache;
-			if (pd == null || !(pd instanceof Set)) {
-				pd = new ConcurrentHashSet<SourceContextAndPath>();
+			if (pd == null || !(pd instanceof PathCache)) {
+				pd = new PathCache(generation);
 				this.postdominatorsOrPathCache = pd;
 
 			}
-			return (Set<SourceContextAndPath>) pd;
+			PathCache pc = newGen(generation, (PathCache) pd);
+			return pc;
 		}
 	}
 
+	private PathCache newGen(int gen, PathCache pc) {
+		if (pc.getGeneration() != gen) {
+			synchronized (PATH_CACHE_LOCK) {
+				pc = (PathCache) this.postdominatorsOrPathCache;
+				if (pc.getGeneration() != gen) {
+					pc = new PathCache(gen);
+					this.postdominatorsOrPathCache = pc;
+				}
+			}
+		}
+		return pc;
+	}
+
 	public void clearPathCache() {
-		Collection<?> pd = postdominatorsOrPathCache;
-		if (pd instanceof Set)
+		if (postdominatorsOrPathCache instanceof PathCache)
 			postdominatorsOrPathCache = null;
 
 	}
